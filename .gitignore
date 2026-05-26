@@ -1,0 +1,10 @@
+.DS_Store
+bin/
+dist/
+work/
+.apkworkshop/
+apk/*.apk
+!apk/.gitkeep
+*.app/
+*.exe
+*.test
