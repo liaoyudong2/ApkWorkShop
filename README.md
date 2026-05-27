@@ -1,48 +1,90 @@
 # APK Workshop
 
-纯 Go + Fyne 桌面 App，用于对 APK 做文件级拆解、资源预览、替换和重新封包。
+桌面 APK 资源工作台，当前主架构为：
 
-## 功能范围
+- `Tauri 2`
+- `React 18`
+- `TypeScript`
+- `Vite 6`
+- `Tailwind CSS 3`
+- `TanStack Query`
+- `i18next + react-i18next`
+- `Rust commands`
 
-- 自动扫描 `apk/*.apk`，也可手动选择 APK。
-- 解包到 `work/<apk-name>/`，生成 `manifest.json`。
-- 资源浏览、路径搜索、按 `assets/res/lib/classes/META-INF` 和资源类型筛选。
-- 预览 PNG/JPG/WebP/GIF/BMP、JSON/XML/TXT/Lua/properties、Unity Bundle 节点摘要、二进制摘要。
-- 替换 APK 内直接文件，支持整 `.bundle` 文件替换。
-- 选中 `.bundle` 后可在右侧面板解包 UnityFS，并解析 Unity 资源对象：TextAsset 导出真实文本，Texture2D 可解码格式导出 PNG 预览，Sprite/AudioClip 等显示资源类型和元数据。
-- 顶部可一键解包全部 Bundle，左侧 `Bundle资源/Bundle图片/Bundle文本/Bundle音频/Bundle其他` 会汇总已解包 Bundle 内资源，并可跳转回对应 Bundle 操作。
-- 支持替换 TextAsset 文本/代码资源并重封 Bundle。
-- 封包到 `dist/<apk-name>-unsigned.apk`，构建时移除旧签名文件。
-- 可选 debug 签名，使用 `.apkworkshop/debug.keystore`。
+## 当前已实现
 
-## 边界
+- 自动扫描 `apk/*.apk`，也可手动选择 APK
+- APK 解包到工作区并生成 `manifest.json`
+- APK 资源浏览、搜索、分组筛选
+- 普通文件预览：图片、文本、二进制摘要
+- 普通 APK 文件替换
+- APK 重封包
+- 调试签名能力检测与签名
+- Unity Bundle 解包、解包全部 Bundle
+- Bundle 节点/资源汇总浏览
+- Bundle 图片、文本、音频预览
+- TextAsset 替换、Bundle 重封
+- `AudioClip` 自动导出为可播放音频，并兼容刷新旧工作区
 
-- 首版不修改 `dex`、`so`。
-- Bundle 支持 UnityFS v6/v7 的无压缩、LZ4、LZ4HC；LZMA、加密或未知格式会明确提示不支持。
-- 首版支持 TextAsset 对象内容替换；Texture2D 支持 RGB24/RGBA32/ARGB32/ETC2_RGBA8 预览解码，但暂不做像素写回；Sprite/AudioClip 暂显示元数据。
-- 首版不做破解、防护绕过、热更新劫持、证书伪造。
-- 缺少 `zipalign/apksigner` 时仍可输出未签名 APK，App 会提示签名不可用。
-
-## 运行
-
-```bash
-go run ./cmd/apkworkshop
-```
-
-需要 Go 1.24 或更高版本。
-
-## 构建
+## 一键运行
 
 ```bash
-go build -o bin/apkworkshop ./cmd/apkworkshop
+./run-app.sh preview
 ```
 
-## 签名工具
+其他模式：
 
-签名需要本机可执行：
+```bash
+./run-app.sh dev
+./run-app.sh tauri-dev
+./run-app.sh tauri-build
+```
 
-- `keytool`
-- `zipalign`
-- `apksigner`
+可选环境变量：
 
-`keytool` 通常来自 JDK，`zipalign/apksigner` 来自 Android SDK Build-Tools。
+```bash
+HOST=0.0.0.0 PORT=1421 ./run-app.sh preview
+```
+
+## 开发
+
+```bash
+npm install
+npm run dev
+```
+
+如本机具备 Rust/Tauri 环境：
+
+```bash
+npm run tauri:dev
+```
+
+## 目录结构
+
+前端：
+
+- `src/app/`：应用入口、全局样式、国际化初始化
+- `src/features/workbench/`：APK Workshop 主工作台功能
+- `src/shared/api/`：Tauri 命令调用封装
+- `src/shared/lib/`：通用工具函数
+- `src/shared/types/`：前后端共享数据类型
+- `src/shared/ui/`：通用 UI 组件
+
+Rust 原生层：
+
+- `src-tauri/src/application/`：Tauri commands、运行时状态、DTO 模型
+- `src-tauri/src/domain/apk/`：APK 扫描、解包、替换、重封、签名
+- `src-tauri/src/domain/bundle/`：Unity Bundle 解析、解包、资源导出、替换、重封
+- `src-tauri/src/domain/preview/`：图片、文本、音频、二进制预览
+- `src-tauri/src/support/`：路径、时间、JSON、文件等基础支持
+
+## 构建 App
+
+```bash
+npm run tauri:build
+```
+
+macOS 产物默认位于：
+
+- `src-tauri/target/release/bundle/macos/`
+- `src-tauri/target/release/bundle/dmg/`

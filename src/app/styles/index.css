@@ -1,0 +1,71 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+:root {
+  color-scheme: light;
+  --background: 42 33% 97%;
+  --foreground: 212 30% 12%;
+  --card: 0 0% 100%;
+  --card-foreground: 212 30% 12%;
+  --primary: 197 84% 42%;
+  --primary-foreground: 0 0% 100%;
+  --secondary: 39 92% 92%;
+  --secondary-foreground: 26 54% 22%;
+  --muted: 40 22% 92%;
+  --muted-foreground: 210 14% 36%;
+  --accent: 24 88% 90%;
+  --accent-foreground: 22 70% 28%;
+  --destructive: 0 76% 56%;
+  --destructive-foreground: 0 0% 100%;
+  --border: 34 22% 84%;
+  --input: 34 22% 84%;
+  --ring: 197 84% 42%;
+}
+
+* {
+  @apply border-border;
+}
+
+html,
+body,
+#root {
+  height: 100%;
+  overflow: hidden;
+}
+
+body {
+  @apply bg-background text-foreground antialiased;
+  margin: 0;
+  overflow: hidden;
+  font-family:
+    'SF Pro Display',
+    'PingFang SC',
+    'Hiragino Sans GB',
+    'Microsoft YaHei',
+    sans-serif;
+  background-image:
+    linear-gradient(180deg, rgba(255, 250, 240, 0.96), rgba(246, 241, 233, 0.98)),
+    radial-gradient(circle at top left, rgba(249, 115, 22, 0.08), transparent 26%),
+    radial-gradient(circle at top right, rgba(14, 165, 233, 0.08), transparent 28%);
+}
+
+button,
+input,
+textarea {
+  font: inherit;
+}
+
+::-webkit-scrollbar {
+  width: 10px;
+  height: 10px;
+}
+
+::-webkit-scrollbar-thumb {
+  background: rgba(128, 128, 128, 0.25);
+  border-radius: 999px;
+}
+
+::-webkit-scrollbar-track {
+  background: transparent;
+}
