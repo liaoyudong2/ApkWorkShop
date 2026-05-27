@@ -153,6 +153,7 @@ export function AppShell({
   const [query, setQuery] = useState('')
   const [selection, setSelection] = useState<Selection | null>(null)
   const [bundleTab, setBundleTab] = useState<BundleBrowserTab>('resources')
+  const [bundleBrowserPath, setBundleBrowserPath] = useState<string | null>(null)
   const [logExpanded, setLogExpanded] = useState(false)
   const [filters, setFilters] = useState<Set<FilterChip>>(new Set())
   const [compareMode, setCompareMode] = useState<CompareMode>('current')
@@ -197,35 +198,34 @@ export function AppShell({
     return entries.find((entry) => entry.path === selection.path) ?? null
   }, [entries, selection])
 
-  const selectedBundleEntry = useMemo(() => {
-    if (!selection) {
+  const selectionBundlePath = useMemo(() => {
+    if (!selection || selection.type === 'apk') {
       return null
     }
-    const bundlePath =
-      selection.type === 'bundle'
-        ? selection.bundlePath
-        : selection.type === 'bundle-node' || selection.type === 'bundle-resource'
-          ? selection.bundlePath
-          : selectedEntry?.kind === 'bundle'
-            ? selectedEntry.path
-            : null
+    return selection.bundlePath
+  }, [selection])
+
+  const activeBundlePath = selectionBundlePath ?? bundleBrowserPath
+
+  const selectedBundleEntry = useMemo(() => {
+    const bundlePath = activeBundlePath ?? (selectedEntry?.kind === 'bundle' ? selectedEntry.path : null)
     if (!bundlePath) {
       return null
     }
     return entries.find((entry) => entry.path === bundlePath && entry.kind === 'bundle') ?? null
-  }, [entries, selectedEntry, selection])
+  }, [activeBundlePath, entries, selectedEntry])
 
-  const currentBundlePath = selectedBundleEntry?.path ?? null
-  const bundleManifestQuery = useBundleManifest(currentBundlePath ?? undefined)
-  const bundleActions = useBundleActions(currentBundlePath ?? undefined)
+  const currentBundlePath = bundleBrowserPath
+  const bundleManifestQuery = useBundleManifest(activeBundlePath ?? undefined)
+  const bundleActions = useBundleActions(activeBundlePath ?? undefined)
 
   const bundleNodeId = selection?.type === 'bundle-node' ? selection.nodeId : undefined
   const bundleResourceId =
     selection?.type === 'bundle-resource' ? selection.resourceId : undefined
 
   const apkPreview = useApkPreview(selection?.type === 'apk' ? selection.path : undefined)
-  const bundleNodePreview = useBundleNodePreview(currentBundlePath ?? undefined, bundleNodeId)
-  const bundleResourcePreview = useBundleResourcePreview(currentBundlePath ?? undefined, bundleResourceId)
+  const bundleNodePreview = useBundleNodePreview(activeBundlePath ?? undefined, bundleNodeId)
+  const bundleResourcePreview = useBundleResourcePreview(activeBundlePath ?? undefined, bundleResourceId)
   const bundleManifestRefetch = bundleManifestQuery.refetch
   const apkPreviewRefetch = apkPreview.refetch
   const bundleNodePreviewRefetch = bundleNodePreview.refetch
@@ -350,13 +350,14 @@ export function AppShell({
       }
       return
     }
-    if ((selection.type === 'bundle' || selection.type === 'bundle-node' || selection.type === 'bundle-resource') && currentBundlePath) {
-      const exists = entries.some((entry) => entry.path === currentBundlePath)
+    if ((selection.type === 'bundle' || selection.type === 'bundle-node' || selection.type === 'bundle-resource') && activeBundlePath) {
+      const exists = entries.some((entry) => entry.path === activeBundlePath)
       if (!exists) {
+        setBundleBrowserPath(null)
         setSelection(entries[0] ? { type: 'apk', path: entries[0].path } : null)
       }
     }
-  }, [currentBundlePath, entries, selection])
+  }, [activeBundlePath, entries, selection])
 
   const apkCounts = useMemo(() => {
     const map = new Map<GroupId, number>()
@@ -544,10 +545,35 @@ export function AppShell({
     (bundlePath: string) => {
       setGroup('bundles')
       setBundleTab('resources')
+      setBundleBrowserPath(bundlePath)
       setSelection({ type: 'bundle', bundlePath })
       setQuery('')
     },
     [],
+  )
+
+  const handleSelectGroup = useCallback(
+    (nextGroup: GroupId) => {
+      setGroup(nextGroup)
+      setQuery('')
+      setFilters(new Set())
+
+      if (isBundleSummaryGroup(nextGroup)) {
+        setBundleBrowserPath(null)
+        if (selection?.type === 'bundle' || selection?.type === 'bundle-node') {
+          setSelection(null)
+        }
+        return
+      }
+
+      if (bundleBrowserPath) {
+        setBundleBrowserPath(null)
+      }
+      if (selection?.type === 'bundle' || selection?.type === 'bundle-node' || selection?.type === 'bundle-resource') {
+        setSelection(selectedBundleEntry ? { type: 'apk', path: selectedBundleEntry.path } : null)
+      }
+    },
+    [bundleBrowserPath, selectedBundleEntry, selection],
   )
 
   const toggleFilter = useCallback((filter: FilterChip) => {
@@ -636,16 +662,17 @@ export function AppShell({
         className={`grid min-h-0 flex-1 ${
           previewPaneVisible
             ? 'grid-cols-[208px_minmax(0,1fr)_32px_minmax(520px,36vw)]'
-            : 'grid-cols-[208px_minmax(0,1fr)_32px]'
+            : 'grid-cols-[208px_minmax(0,1fr)]'
         } gap-0`}
       >
         <WorkbenchSidebar
           group={group}
           counts={counts}
           currentBundlePath={currentBundlePath}
-          onSelectGroup={setGroup}
+          onSelectGroup={handleSelectGroup}
           onBackToApk={() => {
             setGroup('all')
+            setBundleBrowserPath(null)
             if (selectedBundleEntry) {
               setSelection({ type: 'apk', path: selectedBundleEntry.path })
             }
@@ -665,11 +692,14 @@ export function AppShell({
           onQueryChange={setQuery}
           onToggleFilter={toggleFilter}
           onSelectEntry={(entry) => {
+            setPreviewPaneVisible(true)
             setCompareMode('current')
             if (entry.kind === 'bundle') {
+              setBundleBrowserPath(entry.path)
               setSelection({ type: 'bundle', bundlePath: entry.path })
               setBundleTab('resources')
             } else {
+              setBundleBrowserPath(null)
               setSelection({ type: 'apk', path: entry.path })
             }
           }}
@@ -683,74 +713,98 @@ export function AppShell({
             if (!currentBundlePath) {
               return
             }
+            setPreviewPaneVisible(true)
+            setBundleBrowserPath(currentBundlePath)
             setSelection({ type: 'bundle-node', bundlePath: currentBundlePath, nodeId: node.id })
           }}
           onSelectBundleResource={(resource) => {
             if (!currentBundlePath) {
               return
             }
+            setPreviewPaneVisible(true)
+            setBundleBrowserPath(currentBundlePath)
             setSelection({ type: 'bundle-resource', bundlePath: currentBundlePath, resourceId: resource.id })
           }}
           onJumpBundle={handleJumpBundle}
         />
 
-        <div className="flex min-h-0 items-center justify-center">
-          <Button
-            variant="ghost"
-            size="icon"
-            className="h-14 w-7 rounded-l-lg rounded-r-none border border-r-0 border-white/70 bg-white/88 shadow-sm"
-            onClick={() => setPreviewPaneVisible((value) => !value)}
-            title={t('actions.togglePreview')}
-          >
-            {previewPaneVisible ? <ChevronRight className="h-4 w-4" /> : <ChevronLeft className="h-4 w-4" />}
-          </Button>
-        </div>
+        {!previewPaneVisible ? (
+          <div className="pointer-events-none relative min-h-0">
+            <div className="absolute inset-y-0 right-0 z-10 flex items-center translate-x-1/2">
+              <Button
+                variant="ghost"
+                size="icon"
+                className="pointer-events-auto h-14 w-7 rounded-l-lg rounded-r-none border border-r-0 border-white/70 bg-white/88 shadow-sm"
+                onClick={() => setPreviewPaneVisible(true)}
+                title={t('actions.togglePreview')}
+              >
+                <ChevronLeft className="h-4 w-4" />
+              </Button>
+            </div>
+          </div>
+        ) : null}
 
         {previewPaneVisible ? (
-          <PreviewStudio
-            selection={selection}
-            entry={selection?.type === 'apk' ? selectedEntry : selectedBundleEntry}
-            bundleManifest={bundleManifest}
-            bundleInfo={bundleActions.info}
-            bundleError={activeBundleError}
-            bundleNode={selectedBundleNode}
-            bundleResource={selectedBundleResource}
-            bundleSummaryItem={bundleSummaryItem}
-            preview={activePreview}
-            snapshot={selectedSnapshot}
-            compareMode={compareMode}
-            isReplaceable={isReplaceable}
-            dragActive={dragActive}
-            dragLabel={dragLabel}
-            onCompareModeChange={setCompareMode}
-            onReplace={() => void handleReplaceCurrent()}
-            onAnalyzeBundle={() => void bundleActions.analyze()}
-            onExtractBundle={() => void bundleActions.extract(true)}
-            onBuildBundle={() => void bundleActions.build()}
-            onReplaceBundle={() => void handleReplaceBundleFile()}
-            onJumpToBundle={() => {
-              const target = bundleSummaryItem?.bundle_path ?? currentBundlePath
-              if (target) {
-                handleJumpBundle(target)
-              }
-            }}
-            onBackToBundle={() => {
-              if (currentBundlePath) {
-                setSelection({ type: 'bundle', bundlePath: currentBundlePath })
-                setBundleTab('resources')
-              }
-            }}
-            onJumpToNode={() => {
-              if (currentBundlePath && selectedBundleNodeFromResource) {
-                setBundleTab('nodes')
-                setSelection({
-                  type: 'bundle-node',
-                  bundlePath: currentBundlePath,
-                  nodeId: selectedBundleNodeFromResource.id,
-                })
-              }
-            }}
-          />
+          <>
+            <div className="flex min-h-0 items-center justify-center">
+              <Button
+                variant="ghost"
+                size="icon"
+                className="h-14 w-7 rounded-l-lg rounded-r-none border border-r-0 border-white/70 bg-white/88 shadow-sm"
+                onClick={() => setPreviewPaneVisible(false)}
+                title={t('actions.togglePreview')}
+              >
+                <ChevronRight className="h-4 w-4" />
+              </Button>
+            </div>
+
+            <PreviewStudio
+              selection={selection}
+              entry={selection?.type === 'apk' ? selectedEntry : selectedBundleEntry}
+              bundleManifest={bundleManifest}
+              bundleInfo={bundleActions.info}
+              bundleError={activeBundleError}
+              bundleNode={selectedBundleNode}
+              bundleResource={selectedBundleResource}
+              bundleSummaryItem={bundleSummaryItem}
+              preview={activePreview}
+              snapshot={selectedSnapshot}
+              compareMode={compareMode}
+              isReplaceable={isReplaceable}
+              dragActive={dragActive}
+              dragLabel={dragLabel}
+              onCompareModeChange={setCompareMode}
+              onReplace={() => void handleReplaceCurrent()}
+              onAnalyzeBundle={() => void bundleActions.analyze()}
+              onExtractBundle={() => void bundleActions.extract(true)}
+              onBuildBundle={() => void bundleActions.build()}
+              onReplaceBundle={() => void handleReplaceBundleFile()}
+              onJumpToBundle={() => {
+                const target = bundleSummaryItem?.bundle_path ?? activeBundlePath
+                if (target) {
+                  handleJumpBundle(target)
+                }
+              }}
+              onBackToBundle={() => {
+                if (activeBundlePath) {
+                  setBundleBrowserPath(activeBundlePath)
+                  setSelection({ type: 'bundle', bundlePath: activeBundlePath })
+                  setBundleTab('resources')
+                }
+              }}
+              onJumpToNode={() => {
+                if (activeBundlePath && selectedBundleNodeFromResource) {
+                  setBundleTab('nodes')
+                  setBundleBrowserPath(activeBundlePath)
+                  setSelection({
+                    type: 'bundle-node',
+                    bundlePath: activeBundlePath,
+                    nodeId: selectedBundleNodeFromResource.id,
+                  })
+                }
+              }}
+            />
+          </>
         ) : null}
       </div>
 

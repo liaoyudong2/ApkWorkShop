@@ -1,5 +1,5 @@
 import { ArrowRight, CheckCircle2 } from 'lucide-react'
-import { useMemo } from 'react'
+import { useEffect, useMemo, useRef, useState, type ReactNode } from 'react'
 import { useTranslation } from 'react-i18next'
 
 import { WorkbenchIcon } from '@/features/workbench/components/workbench-icons'
@@ -23,6 +23,9 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/sha
 import { Input } from '@/shared/ui/input'
 import { ScrollArea } from '@/shared/ui/scroll-area'
 import { FilterChip, SegmentedTabs } from '@/shared/ui/tabs'
+
+const LIST_ROW_HEIGHT = 64
+const LIST_OVERSCAN = 8
 
 export function ResourceBrowser({
   group,
@@ -221,40 +224,40 @@ function ApkEntryList({
   }
 
   return (
-    <ScrollArea className="min-h-0 flex-1 pr-1">
-      <div className="grid gap-1.5">
-        {entries.map((entry) => {
+    <VirtualList
+      items={entries}
+      itemHeight={LIST_ROW_HEIGHT}
+      renderItem={(entry) => {
           const active =
             (selection?.type === 'apk' && selection.path === entry.path) ||
             (selection?.type === 'bundle' && selection.bundlePath === entry.path)
-          return (
-            <button
-              key={entry.path}
-              type="button"
-              className={cn(
-                'grid grid-cols-[32px_minmax(0,1fr)_72px_72px_auto] items-center gap-3 rounded-md border px-3 py-2 text-left transition',
-                active ? 'border-primary bg-sky-50/90' : 'border-white/60 bg-white/55 hover:bg-white/85',
-              )}
-              onClick={() => onSelect(entry)}
-            >
-              <div className="flex h-8 w-8 items-center justify-center rounded-md bg-white/80">
-                <WorkbenchIcon name={iconNameForKind(entry.kind) as never} className="h-4 w-4 text-muted-foreground" />
-              </div>
-              <div className="min-w-0">
-                <div className="truncate text-sm font-medium">{entry.name}</div>
-                <div className="truncate text-xs text-muted-foreground">{entry.path}</div>
-              </div>
-              <div className="text-xs text-muted-foreground">{entry.kind}</div>
-              <div className="text-xs text-muted-foreground">{formatSize(entry.size)}</div>
-              <div className="flex flex-col items-end gap-1">
-                {entry.replaceable ? <StateTag text="R" active /> : <StateTag text="R" />}
-                {entry.changed ? <StateTag text={t('common.yes')} active /> : <StateTag text={t('common.no')} />}
-              </div>
-            </button>
-          )
-        })}
-      </div>
-    </ScrollArea>
+        return (
+          <button
+            key={entry.path}
+            type="button"
+            className={cn(
+              'grid h-[56px] grid-cols-[32px_minmax(0,1fr)_72px_72px_auto] items-center gap-3 rounded-md border px-3 py-2 text-left transition',
+              active ? 'border-primary bg-sky-50/90' : 'border-white/60 bg-white/55 hover:bg-white/85',
+            )}
+            onClick={() => onSelect(entry)}
+          >
+            <div className="flex h-8 w-8 items-center justify-center rounded-md bg-white/80">
+              <WorkbenchIcon name={iconNameForKind(entry.kind) as never} className="h-4 w-4 text-muted-foreground" />
+            </div>
+            <div className="min-w-0">
+              <div className="truncate text-sm font-medium">{entry.name}</div>
+              <div className="truncate text-xs text-muted-foreground">{entry.path}</div>
+            </div>
+            <div className="text-xs text-muted-foreground">{entry.kind}</div>
+            <div className="text-xs text-muted-foreground">{formatSize(entry.size)}</div>
+            <div className="flex flex-col items-end gap-1">
+              {entry.replaceable ? <StateTag text="R" active /> : <StateTag text="R" />}
+              {entry.changed ? <StateTag text={t('common.yes')} active /> : <StateTag text={t('common.no')} />}
+            </div>
+          </button>
+        )
+      }}
+    />
   )
 }
 
@@ -276,45 +279,45 @@ function BundleSummaryList({
   }
 
   return (
-    <ScrollArea className="min-h-0 flex-1 pr-1">
-      <div className="grid gap-1.5">
-        {items.map((item) => {
+    <VirtualList
+      items={items}
+      itemHeight={LIST_ROW_HEIGHT}
+      renderItem={(item) => {
           const active =
             selection?.type === 'bundle-resource' &&
             selection.bundlePath === item.bundle_path &&
             selection.resourceId === item.resource.id
-          return (
-            <div
-              key={`${item.bundle_path}:${item.resource.id}`}
-              className={cn(
-                'grid grid-cols-[32px_minmax(0,1fr)_72px_72px_auto] items-center gap-3 rounded-md border px-3 py-2 transition',
-                active ? 'border-primary bg-sky-50/90' : 'border-white/60 bg-white/55',
-              )}
+        return (
+          <div
+            key={`${item.bundle_path}:${item.resource.id}`}
+            className={cn(
+              'grid h-[56px] grid-cols-[32px_minmax(0,1fr)_72px_72px_auto] items-center gap-3 rounded-md border px-3 py-2 transition',
+              active ? 'border-primary bg-sky-50/90' : 'border-white/60 bg-white/55',
+            )}
+          >
+            <button type="button" className="contents text-left" onClick={() => onSelect(item)}>
+              <div className="flex h-8 w-8 items-center justify-center rounded-md bg-white/80">
+                <WorkbenchIcon name={iconNameForKind(item.resource.kind) as never} className="h-4 w-4 text-muted-foreground" />
+              </div>
+              <div className="min-w-0">
+                <div className="truncate text-sm font-medium">{item.resource.name || item.resource.type}</div>
+                <div className="truncate text-xs text-muted-foreground">{compactPath(item.bundle_path, 48)}</div>
+              </div>
+              <div className="text-xs text-muted-foreground">{item.resource.kind}</div>
+              <div className="text-xs text-muted-foreground">{formatSize(item.resource.size)}</div>
+            </button>
+            <button
+              type="button"
+              onClick={() => onJumpBundle(item.bundle_path)}
+              className="inline-flex items-center gap-1 text-xs text-primary"
             >
-              <button type="button" className="contents text-left" onClick={() => onSelect(item)}>
-                <div className="flex h-8 w-8 items-center justify-center rounded-md bg-white/80">
-                  <WorkbenchIcon name={iconNameForKind(item.resource.kind) as never} className="h-4 w-4 text-muted-foreground" />
-                </div>
-                <div className="min-w-0">
-                  <div className="truncate text-sm font-medium">{item.resource.name || item.resource.type}</div>
-                  <div className="truncate text-xs text-muted-foreground">{compactPath(item.bundle_path, 48)}</div>
-                </div>
-                <div className="text-xs text-muted-foreground">{item.resource.kind}</div>
-                <div className="text-xs text-muted-foreground">{formatSize(item.resource.size)}</div>
-              </button>
-              <button
-                type="button"
-                onClick={() => onJumpBundle(item.bundle_path)}
-                className="inline-flex items-center gap-1 text-xs text-primary"
-              >
-                {t('actions.locateBundle')}
-                <ArrowRight className="h-3.5 w-3.5" />
-              </button>
-            </div>
-          )
-        })}
-      </div>
-    </ScrollArea>
+              {t('actions.locateBundle')}
+              <ArrowRight className="h-3.5 w-3.5" />
+            </button>
+          </div>
+        )
+      }}
+    />
   )
 }
 
@@ -334,40 +337,40 @@ function BundleResourceList({
   }
 
   return (
-    <ScrollArea className="min-h-0 flex-1 pr-1">
-      <div className="grid gap-1.5">
-        {items.map((resource) => {
+    <VirtualList
+      items={items}
+      itemHeight={LIST_ROW_HEIGHT}
+      renderItem={(resource) => {
           const active =
             selection?.type === 'bundle-resource' &&
             selection.resourceId === resource.id
-          return (
-            <button
-              key={resource.id}
-              type="button"
-              className={cn(
-                'grid grid-cols-[32px_minmax(0,1fr)_84px_72px_auto] items-center gap-3 rounded-md border px-3 py-2 text-left transition',
-                active ? 'border-primary bg-sky-50/90' : 'border-white/60 bg-white/55 hover:bg-white/85',
-              )}
-              onClick={() => onSelect(resource)}
-            >
-              <div className="flex h-8 w-8 items-center justify-center rounded-md bg-white/80">
-                <WorkbenchIcon name={iconNameForKind(resource.kind) as never} className="h-4 w-4 text-muted-foreground" />
-              </div>
-              <div className="min-w-0">
-                <div className="truncate text-sm font-medium">{resource.name || resource.type}</div>
-                <div className="truncate text-xs text-muted-foreground">{resource.node_path}</div>
-              </div>
-              <div className="text-xs text-muted-foreground">{resource.type}</div>
-              <div className="text-xs text-muted-foreground">{formatSize(resource.size)}</div>
-              <div className="flex flex-col items-end gap-1">
-                {resource.replaceable ? <StateTag text="R" active /> : <StateTag text="R" />}
-                {resource.changed ? <StateTag text="C" active /> : <StateTag text="C" />}
-              </div>
-            </button>
-          )
-        })}
-      </div>
-    </ScrollArea>
+        return (
+          <button
+            key={resource.id}
+            type="button"
+            className={cn(
+              'grid h-[56px] grid-cols-[32px_minmax(0,1fr)_84px_72px_auto] items-center gap-3 rounded-md border px-3 py-2 text-left transition',
+              active ? 'border-primary bg-sky-50/90' : 'border-white/60 bg-white/55 hover:bg-white/85',
+            )}
+            onClick={() => onSelect(resource)}
+          >
+            <div className="flex h-8 w-8 items-center justify-center rounded-md bg-white/80">
+              <WorkbenchIcon name={iconNameForKind(resource.kind) as never} className="h-4 w-4 text-muted-foreground" />
+            </div>
+            <div className="min-w-0">
+              <div className="truncate text-sm font-medium">{resource.name || resource.type}</div>
+              <div className="truncate text-xs text-muted-foreground">{resource.node_path}</div>
+            </div>
+            <div className="text-xs text-muted-foreground">{resource.type}</div>
+            <div className="text-xs text-muted-foreground">{formatSize(resource.size)}</div>
+            <div className="flex flex-col items-end gap-1">
+              {resource.replaceable ? <StateTag text="R" active /> : <StateTag text="R" />}
+              {resource.changed ? <StateTag text="C" active /> : <StateTag text="C" />}
+            </div>
+          </button>
+        )
+      }}
+    />
   )
 }
 
@@ -387,35 +390,94 @@ function BundleNodeList({
   }
 
   return (
-    <ScrollArea className="min-h-0 flex-1 pr-1">
-      <div className="grid gap-1.5">
-        {items.map((node) => {
+    <VirtualList
+      items={items}
+      itemHeight={LIST_ROW_HEIGHT}
+      renderItem={(node) => {
           const active = selection?.type === 'bundle-node' && selection.nodeId === node.id
-          return (
-            <button
-              key={node.id}
-              type="button"
-              className={cn(
-                'grid grid-cols-[32px_minmax(0,1fr)_72px_72px_auto] items-center gap-3 rounded-md border px-3 py-2 text-left transition',
-                active ? 'border-primary bg-sky-50/90' : 'border-white/60 bg-white/55 hover:bg-white/85',
-              )}
-              onClick={() => onSelect(node)}
-            >
-              <div className="flex h-8 w-8 items-center justify-center rounded-md bg-white/80">
-                <WorkbenchIcon name={iconNameForKind(node.kind) as never} className="h-4 w-4 text-muted-foreground" />
-              </div>
-              <div className="min-w-0">
-                <div className="truncate text-sm font-medium">{node.name}</div>
-                <div className="truncate text-xs text-muted-foreground">{node.path}</div>
-              </div>
-              <div className="text-xs text-muted-foreground">{node.kind}</div>
-              <div className="text-xs text-muted-foreground">{formatSize(node.size)}</div>
-              <div className="flex items-center justify-end">
-                {node.changed ? <CheckCircle2 className="h-4 w-4 text-primary" /> : null}
-              </div>
-            </button>
-          )
-        })}
+        return (
+          <button
+            key={node.id}
+            type="button"
+            className={cn(
+              'grid h-[56px] grid-cols-[32px_minmax(0,1fr)_72px_72px_auto] items-center gap-3 rounded-md border px-3 py-2 text-left transition',
+              active ? 'border-primary bg-sky-50/90' : 'border-white/60 bg-white/55 hover:bg-white/85',
+            )}
+            onClick={() => onSelect(node)}
+          >
+            <div className="flex h-8 w-8 items-center justify-center rounded-md bg-white/80">
+              <WorkbenchIcon name={iconNameForKind(node.kind) as never} className="h-4 w-4 text-muted-foreground" />
+            </div>
+            <div className="min-w-0">
+              <div className="truncate text-sm font-medium">{node.name}</div>
+              <div className="truncate text-xs text-muted-foreground">{node.path}</div>
+            </div>
+            <div className="text-xs text-muted-foreground">{node.kind}</div>
+            <div className="text-xs text-muted-foreground">{formatSize(node.size)}</div>
+            <div className="flex items-center justify-end">
+              {node.changed ? <CheckCircle2 className="h-4 w-4 text-primary" /> : null}
+            </div>
+          </button>
+        )
+      }}
+    />
+  )
+}
+
+function VirtualList<T>({
+  items,
+  itemHeight,
+  renderItem,
+}: {
+  items: T[]
+  itemHeight: number
+  renderItem: (item: T, index: number) => ReactNode
+}) {
+  const containerRef = useRef<HTMLDivElement | null>(null)
+  const [viewportHeight, setViewportHeight] = useState(0)
+  const [scrollTop, setScrollTop] = useState(0)
+
+  useEffect(() => {
+    const node = containerRef.current
+    if (!node) {
+      return
+    }
+
+    const updateHeight = () => setViewportHeight(node.clientHeight)
+    updateHeight()
+
+    const observer = new ResizeObserver(() => updateHeight())
+    observer.observe(node)
+    return () => observer.disconnect()
+  }, [])
+
+  const totalHeight = items.length * itemHeight
+  const safeViewportHeight = viewportHeight || itemHeight * 8
+  const startIndex = Math.max(0, Math.floor(scrollTop / itemHeight) - LIST_OVERSCAN)
+  const endIndex = Math.min(
+    items.length,
+    Math.ceil((scrollTop + safeViewportHeight) / itemHeight) + LIST_OVERSCAN,
+  )
+  const visibleItems = items.slice(startIndex, endIndex)
+  const offsetY = startIndex * itemHeight
+
+  return (
+    <ScrollArea
+      ref={containerRef}
+      className="min-h-0 flex-1 pr-1"
+      onScroll={(event) => setScrollTop((event.currentTarget as HTMLDivElement).scrollTop)}
+    >
+      <div style={{ height: totalHeight, position: 'relative' }}>
+        <div
+          className="grid gap-1.5"
+          style={{
+            position: 'absolute',
+            insetInline: 0,
+            top: offsetY,
+          }}
+        >
+          {visibleItems.map((item, index) => renderItem(item, startIndex + index))}
+        </div>
       </div>
     </ScrollArea>
   )
