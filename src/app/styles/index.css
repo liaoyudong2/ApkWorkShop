@@ -31,6 +31,7 @@ html,
 body,
 #root {
   height: 100%;
+  min-height: 100%;
   overflow: hidden;
 }
 
@@ -48,6 +49,11 @@ body {
     linear-gradient(180deg, rgba(255, 250, 240, 0.96), rgba(246, 241, 233, 0.98)),
     radial-gradient(circle at top left, rgba(249, 115, 22, 0.08), transparent 26%),
     radial-gradient(circle at top right, rgba(14, 165, 233, 0.08), transparent 28%);
+}
+
+#root {
+  min-width: 1480px;
+  min-height: 900px;
 }
 
 button,

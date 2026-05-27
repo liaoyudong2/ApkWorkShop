@@ -27,6 +27,7 @@ import {
 } from '@/shared/api/tauri'
 import type {
   ActivityLogItem,
+  BundleAnalyzeInfo,
   BundleManifest,
   BundleResourceSummary,
   PreviewResult,
@@ -301,12 +302,18 @@ export function useBundleResourcePreview(bundlePath?: string, resourceId?: strin
 export function useBundleActions(bundlePath?: string) {
   const queryClient = useQueryClient()
 
-  const analyzeMutation = useMutation({
+  const analyzeMutation = useMutation<BundleAnalyzeInfo>({
     mutationFn: async () => {
       if (!bundlePath) {
         throw new Error('bundlePath 不能为空')
       }
-      return analyzeBundle(bundlePath)
+      const info = await analyzeBundle(bundlePath)
+      return {
+        node_count: info.node_count,
+        resource_count: info.resource_count,
+        compression: info.compression,
+        engine_version: info.engine_version,
+      }
     },
   })
 

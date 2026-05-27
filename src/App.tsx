@@ -13,7 +13,6 @@ export default function App() {
     busyAction,
     chooseApk,
     extract,
-    refreshManifest,
     replaceApkEntry,
     buildApk,
     signApk,
@@ -44,7 +43,6 @@ export default function App() {
           busyAction={busyAction}
           onChooseApk={chooseApk}
           onExtract={() => extract(true)}
-          onRefreshManifest={refreshManifest}
           onReplaceApkEntry={replaceApkEntry}
           onBuildApk={buildApk}
           onSignApk={() => signApk()}

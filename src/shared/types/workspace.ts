@@ -110,6 +110,13 @@ export interface PreviewResult {
   file_path?: string | null
 }
 
+export interface BundleAnalyzeInfo {
+  node_count?: number
+  resource_count?: number
+  compression?: string
+  engine_version?: string
+}
+
 export interface BundleNode {
   id: string
   path: string

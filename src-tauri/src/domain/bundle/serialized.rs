@@ -607,7 +607,7 @@ fn decode_rgb24(info: &Texture2DInfo) -> Result<Vec<u8>, String> {
   for chunk in info.data[..need].chunks_exact(3) {
     rgba.extend_from_slice(&[chunk[0], chunk[1], chunk[2], 0xff]);
   }
-  Ok(rgba)
+  Ok(flip_rgba_rows(info.width, info.height, &rgba))
 }
 
 fn decode_rgba32(info: &Texture2DInfo) -> Result<Vec<u8>, String> {
@@ -615,7 +615,7 @@ fn decode_rgba32(info: &Texture2DInfo) -> Result<Vec<u8>, String> {
   if info.data.len() < need {
     return Err(format!("Texture2D 数据不足: {} < {need}", info.data.len()));
   }
-  Ok(info.data[..need].to_vec())
+  Ok(flip_rgba_rows(info.width, info.height, &info.data[..need]))
 }
 
 fn decode_argb32(info: &Texture2DInfo) -> Result<Vec<u8>, String> {
@@ -627,7 +627,7 @@ fn decode_argb32(info: &Texture2DInfo) -> Result<Vec<u8>, String> {
   for chunk in info.data[..need].chunks_exact(4) {
     rgba.extend_from_slice(&[chunk[1], chunk[2], chunk[3], chunk[0]]);
   }
-  Ok(rgba)
+  Ok(flip_rgba_rows(info.width, info.height, &rgba))
 }
 
 fn decode_etc2_rgba8(info: &Texture2DInfo) -> Result<Vec<u8>, String> {
@@ -644,7 +644,21 @@ fn decode_etc2_rgba8(info: &Texture2DInfo) -> Result<Vec<u8>, String> {
     rgba.push(((pixel >> 16) & 0xff) as u8);
     rgba.push(((pixel >> 24) & 0xff) as u8);
   }
-  Ok(rgba)
+  Ok(flip_rgba_rows(info.width, info.height, &rgba))
+}
+
+fn flip_rgba_rows(width: usize, height: usize, rgba: &[u8]) -> Vec<u8> {
+  let stride = width.saturating_mul(4);
+  if stride == 0 || rgba.len() < stride.saturating_mul(height) {
+    return rgba.to_vec();
+  }
+  let mut flipped = vec![0_u8; stride * height];
+  for row in 0..height {
+    let src_start = row * stride;
+    let dst_start = (height - 1 - row) * stride;
+    flipped[dst_start..dst_start + stride].copy_from_slice(&rgba[src_start..src_start + stride]);
+  }
+  flipped
 }
 
 fn find_texture_stream_data(info: &Texture2DInfo, nodes: &[BundleNode], payload: &[u8]) -> Vec<u8> {

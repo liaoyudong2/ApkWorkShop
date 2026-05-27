@@ -13,10 +13,10 @@
     "windows": [
       {
         "title": "APK Workshop",
-        "width": 1440,
-        "height": 900,
-        "minWidth": 1280,
-        "minHeight": 820,
+        "width": 1600,
+        "height": 960,
+        "minWidth": 1480,
+        "minHeight": 900,
         "center": true,
         "resizable": true
       }
