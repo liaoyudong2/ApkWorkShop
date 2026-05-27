@@ -141,9 +141,9 @@ export function PreviewStudio({
                   {dragLabel ?? t('inspector.dropReplace')}
                 </div>
               ) : null}
-              <div className="space-y-3">
-                <div>
-                  <div className="mb-2 text-[11px] uppercase tracking-[0.08em] text-muted-foreground">{t('sections.previewStage')}</div>
+              <div className="flex h-full min-h-0 flex-col">
+                <div className="mb-2 text-[11px] uppercase tracking-[0.08em] text-muted-foreground">{t('sections.previewStage')}</div>
+                <div className="min-h-0 flex-1">
                   <CompareViewer
                     preview={preview}
                     snapshot={snapshot}

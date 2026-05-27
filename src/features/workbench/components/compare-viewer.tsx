@@ -13,7 +13,6 @@ const BASE_SCALE = 1
 const MIN_SCALE = 0.25
 const MAX_SCALE = 4
 const SCALE_STEP = 0.5
-const STAGE_MAX_EDGE = 256
 
 export interface ImagePreviewMetrics {
   naturalWidth: number
@@ -256,7 +255,7 @@ function VersionPreview({
 
   if (preview.text) {
     return (
-      <div className="flex h-full min-h-[260px] flex-col overflow-hidden rounded-lg border border-slate-300/90 bg-white/80 shadow-sm">
+      <div className="flex h-full min-h-0 flex-col overflow-hidden rounded-lg border border-slate-300/90 bg-white/80 shadow-sm">
         <div className="border-b border-slate-300/90 px-3 py-2 text-xs font-medium text-muted-foreground">
           {preview.mode === 'text' ? t('inspector.previewText') : t('inspector.previewContent')}
         </div>
@@ -321,20 +320,46 @@ function StaticImageStage({
 }) {
   const { t } = useTranslation()
   const [fullscreenOpen, setFullscreenOpen] = useState(false)
+  const imageAreaRef = useRef<HTMLDivElement | null>(null)
+  const [imageAreaSize, setImageAreaSize] = useState({ width: compact ? 220 : 256, height: compact ? 220 : 256 })
   const localMetrics = useImagePreviewMetrics(src)
   const resolvedMetrics = metrics ?? localMetrics
 
   const stageMinHeight = compact ? 'min-h-[220px]' : 'min-h-[300px]'
-  const imageAreaSize = compact ? 220 : 256
   const fullWidth = resolvedMetrics?.naturalWidth ?? 0
   const fullHeight = resolvedMetrics?.naturalHeight ?? 0
+
+  useEffect(() => {
+    const node = imageAreaRef.current
+    if (!node) {
+      return
+    }
+
+    const updateSize = () => {
+      const rect = node.getBoundingClientRect()
+      setImageAreaSize({
+        width: Math.max(1, rect.width),
+        height: Math.max(1, rect.height),
+      })
+    }
+
+    updateSize()
+    const observer = new ResizeObserver(() => updateSize())
+    observer.observe(node)
+    return () => observer.disconnect()
+  }, [])
+
   const fitScale = useMemo(() => {
     if (!fullWidth || !fullHeight) {
       return BASE_SCALE
     }
-    const limitScale = Math.min(STAGE_MAX_EDGE / fullWidth, STAGE_MAX_EDGE / fullHeight, BASE_SCALE)
+    const limitScale = Math.min(
+      imageAreaSize.width / fullWidth,
+      imageAreaSize.height / fullHeight,
+      BASE_SCALE,
+    )
     return limitScale
-  }, [fullHeight, fullWidth])
+  }, [fullHeight, fullWidth, imageAreaSize.height, imageAreaSize.width])
 
   const computedWidth = fullWidth ? fullWidth * fitScale : undefined
   const computedHeight = fullHeight ? fullHeight * fitScale : undefined
@@ -358,10 +383,11 @@ function StaticImageStage({
         >
           <div className="flex h-full min-h-full min-w-full items-center justify-center overflow-hidden">
             <div
+              ref={imageAreaRef}
               className="flex shrink-0 items-center justify-center overflow-hidden rounded-lg border border-white/60 bg-[linear-gradient(45deg,rgba(255,255,255,0.7)_25%,rgba(245,245,245,0.7)_25%,rgba(245,245,245,0.7)_50%,rgba(255,255,255,0.7)_50%,rgba(255,255,255,0.7)_75%,rgba(245,245,245,0.7)_75%,rgba(245,245,245,0.7)_100%)] bg-[length:16px_16px]"
               style={{
-                width: `${imageAreaSize}px`,
-                height: `${imageAreaSize}px`,
+                width: `${compact ? 220 : 256}px`,
+                height: `${compact ? 220 : 256}px`,
                 maxWidth: '100%',
                 maxHeight: '100%',
               }}
@@ -533,11 +559,11 @@ function FullscreenImagePreview({
 function TextDiff({ current, before }: { current: string; before: string }) {
   const { t } = useTranslation()
   if (!before) {
-    return <div className="flex h-full min-h-[260px] items-center justify-center text-sm text-muted-foreground">{t('inspector.beforeSnapshotMissing')}</div>
+    return <div className="flex h-full min-h-0 items-center justify-center text-sm text-muted-foreground">{t('inspector.beforeSnapshotMissing')}</div>
   }
 
   return (
-    <div className="grid h-full min-h-[260px] gap-3 lg:grid-cols-2">
+    <div className="grid h-full min-h-0 gap-3 lg:grid-cols-2">
       <TextPane title={t('inspector.beforeVersion')} value={before} />
       <TextPane title={t('inspector.currentVersion')} value={current} />
     </div>
@@ -546,7 +572,7 @@ function TextDiff({ current, before }: { current: string; before: string }) {
 
 function TextPane({ title, value }: { title: string; value: string }) {
   return (
-    <div className="flex h-full min-h-[260px] flex-col overflow-hidden rounded-lg border border-slate-300/90 bg-white/80 shadow-sm">
+    <div className="flex h-full min-h-0 flex-col overflow-hidden rounded-lg border border-slate-300/90 bg-white/80 shadow-sm">
       <div className="border-b border-slate-300/90 px-3 py-2 text-xs font-medium text-muted-foreground">{title}</div>
       <pre className="min-h-0 flex-1 overflow-auto p-4 text-xs leading-6 text-foreground whitespace-pre-wrap break-all">{value}</pre>
     </div>
