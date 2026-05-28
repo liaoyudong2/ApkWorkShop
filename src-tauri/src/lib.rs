@@ -55,6 +55,7 @@ pub fn run() {
       application::commands::preview_bundle_node,
       application::commands::preview_bundle_resource,
       application::commands::list_bundle_resources,
+      application::commands::bundle_resource_counts,
       application::commands::open_path,
       application::commands::activity_logs
     ])

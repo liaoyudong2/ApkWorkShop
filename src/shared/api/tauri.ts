@@ -3,6 +3,7 @@ import { invoke } from '@tauri-apps/api/core'
 import type {
   ActivityLogItem,
   BuildResult,
+  BundleResourceCounts,
   BundleInfo,
   BundleManifest,
   BundleResourceSummary,
@@ -94,6 +95,10 @@ export async function previewBundleResource(bundlePath: string, resourceId: stri
 
 export async function listBundleResources(group?: string, query?: string) {
   return invoke<BundleResourceSummary[]>('list_bundle_resources', { group, query })
+}
+
+export async function bundleResourceCounts() {
+  return invoke<BundleResourceCounts>('bundle_resource_counts')
 }
 
 export async function openPath(path: string) {

@@ -1,9 +1,10 @@
-import { useMutation, useQueries, useQuery, useQueryClient } from '@tanstack/react-query'
+import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import { listen, type UnlistenFn } from '@tauri-apps/api/event'
 import { useEffect, useState } from 'react'
 
 import {
   analyzeBundle,
+  bundleResourceCounts,
   bootstrapProject,
   buildApk,
   buildBundle,
@@ -30,6 +31,7 @@ import {
 import type {
   ActivityLogItem,
   BundleAnalyzeInfo,
+  BundleResourceCounts,
   BundleManifest,
   BundleResourceSummary,
   PreviewResult,
@@ -41,6 +43,7 @@ import type {
 const projectKey = ['project']
 const toolsKey = ['tools']
 const logsKey = ['logs']
+const bundleResourceCountsKey = ['bundle-resource-counts']
 
 export function bundleManifestKey(bundlePath: string) {
   return ['bundle-manifest', bundlePath]
@@ -130,6 +133,7 @@ export function useProject() {
       void queryClient.invalidateQueries({ queryKey: toolsKey })
       void queryClient.invalidateQueries({ queryKey: ['bundle-manifest'] })
       void queryClient.invalidateQueries({ queryKey: ['bundle-resources'] })
+      void queryClient.invalidateQueries({ queryKey: bundleResourceCountsKey })
     },
   })
 
@@ -153,6 +157,7 @@ export function useProject() {
       void queryClient.invalidateQueries({ queryKey: logsKey })
       void queryClient.invalidateQueries({ queryKey: ['bundle-manifest'] })
       void queryClient.invalidateQueries({ queryKey: ['bundle-resources'] })
+      void queryClient.invalidateQueries({ queryKey: bundleResourceCountsKey })
     },
   })
 
@@ -190,6 +195,7 @@ export function useProject() {
       void queryClient.invalidateQueries({ queryKey: logsKey })
       void queryClient.invalidateQueries({ queryKey: ['bundle-manifest'] })
       void queryClient.invalidateQueries({ queryKey: ['bundle-resources'] })
+      void queryClient.invalidateQueries({ queryKey: bundleResourceCountsKey })
     },
   })
 
@@ -280,23 +286,26 @@ export function useBundleResourceList(group?: string, query?: string, enabled = 
 }
 
 export function useBundleResourceCounts(enabled = true) {
-  const groups = ['', 'image', 'text', 'audio', 'other'] as const
-  const queries = useQueries({
-    queries: groups.map((group) => ({
-      queryKey: bundleResourcesKey(group, ''),
-      queryFn: () => listBundleResources(group, ''),
-      enabled,
-      initialData: [] as BundleResourceSummary[],
-    })),
+  const countsQuery = useQuery({
+    queryKey: bundleResourceCountsKey,
+    queryFn: bundleResourceCounts,
+    enabled,
+    initialData: {
+      all: 0,
+      image: 0,
+      text: 0,
+      audio: 0,
+      other: 0,
+    } satisfies BundleResourceCounts,
   })
 
   return {
-    all: queries[0]?.data?.length ?? 0,
-    image: queries[1]?.data?.length ?? 0,
-    text: queries[2]?.data?.length ?? 0,
-    audio: queries[3]?.data?.length ?? 0,
-    other: queries[4]?.data?.length ?? 0,
-    isLoading: queries.some((query) => query.isLoading),
+    all: countsQuery.data?.all ?? 0,
+    image: countsQuery.data?.image ?? 0,
+    text: countsQuery.data?.text ?? 0,
+    audio: countsQuery.data?.audio ?? 0,
+    other: countsQuery.data?.other ?? 0,
+    isLoading: countsQuery.isLoading,
   }
 }
 
@@ -352,6 +361,7 @@ export function useBundleActions(bundlePath?: string) {
     onSuccess: (manifest) => {
       queryClient.setQueryData(bundleManifestKey(bundlePath ?? ''), manifest)
       void queryClient.invalidateQueries({ queryKey: ['bundle-resources'] })
+      void queryClient.invalidateQueries({ queryKey: bundleResourceCountsKey })
       void queryClient.invalidateQueries({ queryKey: logsKey })
     },
   })
@@ -367,6 +377,7 @@ export function useBundleActions(bundlePath?: string) {
       queryClient.setQueryData(bundleManifestKey(bundlePath ?? ''), manifest)
       void queryClient.invalidateQueries({ queryKey: projectKey })
       void queryClient.invalidateQueries({ queryKey: ['bundle-resources'] })
+      void queryClient.invalidateQueries({ queryKey: bundleResourceCountsKey })
       void queryClient.invalidateQueries({ queryKey: logsKey })
     },
   })
@@ -382,6 +393,7 @@ export function useBundleActions(bundlePath?: string) {
       queryClient.setQueryData(bundleManifestKey(bundlePath ?? ''), manifest)
       void queryClient.invalidateQueries({ queryKey: projectKey })
       void queryClient.invalidateQueries({ queryKey: ['bundle-resources'] })
+      void queryClient.invalidateQueries({ queryKey: bundleResourceCountsKey })
       void queryClient.invalidateQueries({ queryKey: logsKey })
     },
   })

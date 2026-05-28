@@ -185,6 +185,14 @@ export interface BundleResourceSummary {
   bundle_changed: boolean
 }
 
+export interface BundleResourceCounts {
+  all: number
+  image: number
+  text: number
+  audio: number
+  other: number
+}
+
 export interface ActivityLogItem {
   level: string
   message: string

@@ -208,6 +208,15 @@ pub struct BundleResourceSummary {
   pub bundle_changed: bool,
 }
 
+#[derive(Debug, Clone, Serialize, Deserialize, Default)]
+pub struct BundleResourceCounts {
+  pub all: usize,
+  pub image: usize,
+  pub text: usize,
+  pub audio: usize,
+  pub other: usize,
+}
+
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct WorkProgressEvent {
   pub kind: String,
