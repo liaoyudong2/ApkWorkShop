@@ -220,6 +220,10 @@ const resources = {
         'refresh-manifest': '正在刷新工作区',
         'choose-replacement': '正在选择替换文件',
       },
+      progress: {
+        'extract-apk': '正在解包 APK {{current}} / {{total}}',
+        'extract-all-bundles': '正在解包 Bundle {{current}} / {{total}}',
+      },
       common: {
         yes: '是',
         no: '否',
@@ -443,6 +447,10 @@ const resources = {
         'extract-all-bundles': 'Extracting all bundles',
         'refresh-manifest': 'Refreshing workspace',
         'choose-replacement': 'Choosing replacement file',
+      },
+      progress: {
+        'extract-apk': 'Extracting APK {{current}} / {{total}}',
+        'extract-all-bundles': 'Extracting Bundles {{current}} / {{total}}',
       },
       common: {
         yes: 'Yes',

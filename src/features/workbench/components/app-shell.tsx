@@ -45,6 +45,7 @@ import type {
   Entry,
   PreviewResult,
   ProjectState,
+  TaskProgress,
   ToolStatus,
 } from '@/shared/types/workspace'
 import { Button } from '@/shared/ui/button'
@@ -123,6 +124,7 @@ export function AppShell({
   logs,
   isLoading,
   busyAction,
+  taskProgress,
   onChooseApk,
   onExtract,
   onReplaceApkEntry,
@@ -138,6 +140,7 @@ export function AppShell({
   logs: ActivityLogItem[]
   isLoading: boolean
   busyAction: string | null
+  taskProgress: TaskProgress | null
   onChooseApk: () => Promise<string | null | undefined> | void
   onExtract: () => Promise<unknown> | void
   onReplaceApkEntry: (targetPath: string, sourcePath: string) => Promise<unknown>
@@ -640,11 +643,12 @@ export function AppShell({
   }, [activeBundleError, dragActive, selection?.type, t])
 
   return (
-    <div className="flex h-full min-h-0 flex-col gap-3 px-4 py-4 lg:px-6">
+    <div className="flex h-full min-h-0 min-w-0 flex-col gap-3 px-4 py-4 lg:px-6">
       <WorkbenchHeader
         project={project}
         tools={tools}
         busyText={busyText}
+        taskProgress={taskProgress}
         isLoading={isLoading || bundleActions.isPending}
         onChooseApk={() => void onChooseApk()}
         onExtract={() => void onExtract()}
@@ -659,10 +663,10 @@ export function AppShell({
       />
 
       <div
-        className={`grid min-h-0 flex-1 ${
+        className={`grid min-h-0 flex-1 overflow-hidden ${
           previewPaneVisible
-            ? 'grid-cols-[208px_minmax(0,1fr)_32px_minmax(520px,36vw)]'
-            : 'grid-cols-[208px_minmax(0,1fr)]'
+            ? 'grid-cols-[clamp(200px,15vw,232px)_minmax(0,1fr)_28px_clamp(420px,31vw,560px)]'
+            : 'grid-cols-[clamp(200px,15vw,232px)_minmax(0,1fr)]'
         } gap-0`}
       >
         <WorkbenchSidebar
@@ -679,58 +683,58 @@ export function AppShell({
           }}
         />
 
-        <ResourceBrowser
-          group={group}
-          query={query}
-          filters={filters}
-          selection={selection}
-          entries={filteredEntries}
-          bundleResources={bundleSummaryItems}
-          bundleManifest={bundleManifest}
-          bundleTab={bundleTab}
-          currentBundlePath={currentBundlePath}
-          onQueryChange={setQuery}
-          onToggleFilter={toggleFilter}
-          onSelectEntry={(entry) => {
-            setPreviewPaneVisible(true)
-            setCompareMode('current')
-            if (entry.kind === 'bundle') {
-              setBundleBrowserPath(entry.path)
-              setSelection({ type: 'bundle', bundlePath: entry.path })
-              setBundleTab('resources')
-            } else {
-              setBundleBrowserPath(null)
-              setSelection({ type: 'apk', path: entry.path })
-            }
-          }}
-          onSelectBundleResourceSummary={(item) => {
-            setPreviewPaneVisible(true)
-            setCompareMode('current')
-            setSelection({ type: 'bundle-resource', bundlePath: item.bundle_path, resourceId: item.resource.id })
-          }}
-          onBundleTabChange={setBundleTab}
-          onSelectBundleNode={(node) => {
-            if (!currentBundlePath) {
-              return
-            }
-            setPreviewPaneVisible(true)
-            setBundleBrowserPath(currentBundlePath)
-            setSelection({ type: 'bundle-node', bundlePath: currentBundlePath, nodeId: node.id })
-          }}
-          onSelectBundleResource={(resource) => {
-            if (!currentBundlePath) {
-              return
-            }
-            setPreviewPaneVisible(true)
-            setBundleBrowserPath(currentBundlePath)
-            setSelection({ type: 'bundle-resource', bundlePath: currentBundlePath, resourceId: resource.id })
-          }}
-          onJumpBundle={handleJumpBundle}
-        />
+        <div className="relative h-full min-h-0 min-w-0 overflow-hidden">
+          <ResourceBrowser
+            group={group}
+            query={query}
+            filters={filters}
+            selection={selection}
+            entries={filteredEntries}
+            bundleResources={bundleSummaryItems}
+            bundleManifest={bundleManifest}
+            bundleTab={bundleTab}
+            currentBundlePath={currentBundlePath}
+            onQueryChange={setQuery}
+            onToggleFilter={toggleFilter}
+            onSelectEntry={(entry) => {
+              setPreviewPaneVisible(true)
+              setCompareMode('current')
+              if (entry.kind === 'bundle') {
+                setBundleBrowserPath(entry.path)
+                setSelection({ type: 'bundle', bundlePath: entry.path })
+                setBundleTab('resources')
+              } else {
+                setBundleBrowserPath(null)
+                setSelection({ type: 'apk', path: entry.path })
+              }
+            }}
+            onSelectBundleResourceSummary={(item) => {
+              setPreviewPaneVisible(true)
+              setCompareMode('current')
+              setSelection({ type: 'bundle-resource', bundlePath: item.bundle_path, resourceId: item.resource.id })
+            }}
+            onBundleTabChange={setBundleTab}
+            onSelectBundleNode={(node) => {
+              if (!currentBundlePath) {
+                return
+              }
+              setPreviewPaneVisible(true)
+              setBundleBrowserPath(currentBundlePath)
+              setSelection({ type: 'bundle-node', bundlePath: currentBundlePath, nodeId: node.id })
+            }}
+            onSelectBundleResource={(resource) => {
+              if (!currentBundlePath) {
+                return
+              }
+              setPreviewPaneVisible(true)
+              setBundleBrowserPath(currentBundlePath)
+              setSelection({ type: 'bundle-resource', bundlePath: currentBundlePath, resourceId: resource.id })
+            }}
+            onJumpBundle={handleJumpBundle}
+          />
 
-        {!previewPaneVisible ? (
-          <div className="pointer-events-none relative min-h-0">
-            <div className="absolute inset-y-0 right-0 z-10 flex items-center translate-x-1/2">
+          {!previewPaneVisible ? (
+            <div className="pointer-events-none absolute inset-y-0 right-0 z-20 flex items-center translate-x-1/2">
               <Button
                 variant="ghost"
                 size="icon"
@@ -741,12 +745,12 @@ export function AppShell({
                 <ChevronLeft className="h-4 w-4" />
               </Button>
             </div>
-          </div>
-        ) : null}
+          ) : null}
+        </div>
 
         {previewPaneVisible ? (
           <>
-            <div className="flex min-h-0 items-center justify-center">
+            <div className="flex min-h-0 items-center justify-center overflow-visible">
               <Button
                 variant="ghost"
                 size="icon"
@@ -758,52 +762,54 @@ export function AppShell({
               </Button>
             </div>
 
-            <PreviewStudio
-              selection={selection}
-              entry={selection?.type === 'apk' ? selectedEntry : selectedBundleEntry}
-              bundleManifest={bundleManifest}
-              bundleInfo={bundleActions.info}
-              bundleError={activeBundleError}
-              bundleNode={selectedBundleNode}
-              bundleResource={selectedBundleResource}
-              bundleSummaryItem={bundleSummaryItem}
-              preview={activePreview}
-              snapshot={selectedSnapshot}
-              compareMode={compareMode}
-              isReplaceable={isReplaceable}
-              dragActive={dragActive}
-              dragLabel={dragLabel}
-              onCompareModeChange={setCompareMode}
-              onReplace={() => void handleReplaceCurrent()}
-              onAnalyzeBundle={() => void bundleActions.analyze()}
-              onExtractBundle={() => void bundleActions.extract(true)}
-              onBuildBundle={() => void bundleActions.build()}
-              onReplaceBundle={() => void handleReplaceBundleFile()}
-              onJumpToBundle={() => {
-                const target = bundleSummaryItem?.bundle_path ?? activeBundlePath
-                if (target) {
-                  handleJumpBundle(target)
-                }
-              }}
-              onBackToBundle={() => {
-                if (activeBundlePath) {
-                  setBundleBrowserPath(activeBundlePath)
-                  setSelection({ type: 'bundle', bundlePath: activeBundlePath })
-                  setBundleTab('resources')
-                }
-              }}
-              onJumpToNode={() => {
-                if (activeBundlePath && selectedBundleNodeFromResource) {
-                  setBundleTab('nodes')
-                  setBundleBrowserPath(activeBundlePath)
-                  setSelection({
-                    type: 'bundle-node',
-                    bundlePath: activeBundlePath,
-                    nodeId: selectedBundleNodeFromResource.id,
-                  })
-                }
-              }}
-            />
+            <div className="h-full min-h-0 min-w-0 overflow-hidden">
+              <PreviewStudio
+                selection={selection}
+                entry={selection?.type === 'apk' ? selectedEntry : selectedBundleEntry}
+                bundleManifest={bundleManifest}
+                bundleInfo={bundleActions.info}
+                bundleError={activeBundleError}
+                bundleNode={selectedBundleNode}
+                bundleResource={selectedBundleResource}
+                bundleSummaryItem={bundleSummaryItem}
+                preview={activePreview}
+                snapshot={selectedSnapshot}
+                compareMode={compareMode}
+                isReplaceable={isReplaceable}
+                dragActive={dragActive}
+                dragLabel={dragLabel}
+                onCompareModeChange={setCompareMode}
+                onReplace={() => void handleReplaceCurrent()}
+                onAnalyzeBundle={() => void bundleActions.analyze()}
+                onExtractBundle={() => void bundleActions.extract(true)}
+                onBuildBundle={() => void bundleActions.build()}
+                onReplaceBundle={() => void handleReplaceBundleFile()}
+                onJumpToBundle={() => {
+                  const target = bundleSummaryItem?.bundle_path ?? activeBundlePath
+                  if (target) {
+                    handleJumpBundle(target)
+                  }
+                }}
+                onBackToBundle={() => {
+                  if (activeBundlePath) {
+                    setBundleBrowserPath(activeBundlePath)
+                    setSelection({ type: 'bundle', bundlePath: activeBundlePath })
+                    setBundleTab('resources')
+                  }
+                }}
+                onJumpToNode={() => {
+                  if (activeBundlePath && selectedBundleNodeFromResource) {
+                    setBundleTab('nodes')
+                    setBundleBrowserPath(activeBundlePath)
+                    setSelection({
+                      type: 'bundle-node',
+                      bundlePath: activeBundlePath,
+                      nodeId: selectedBundleNodeFromResource.id,
+                    })
+                  }
+                }}
+              />
+            </div>
           </>
         ) : null}
       </div>

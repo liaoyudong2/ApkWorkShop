@@ -109,18 +109,18 @@ export function PreviewStudio({
   const canFallbackToNode = selection?.type === 'bundle-resource' && !isReplaceable && Boolean(currentResource?.node_id)
 
   return (
-    <Card className="min-h-0 overflow-hidden xl:flex xl:flex-col">
+    <Card className="flex h-full min-h-0 min-w-0 flex-col overflow-hidden">
       <CardHeader className="px-3.5 py-2.5">
         <div>
           <CardTitle>{t('sections.inspector')}</CardTitle>
           <CardDescription className="text-xs">{t('sections.inspectorDesc')}</CardDescription>
         </div>
       </CardHeader>
-      <CardContent className="min-h-0 flex-1 px-3.5 pb-3">
+      <CardContent className="min-h-0 flex-1 overflow-hidden px-3.5 pb-3">
         {!selection ? (
           <div className="flex h-full items-center justify-center text-sm text-muted-foreground">{t('empty.noSelection')}</div>
         ) : (
-          <div className="grid h-full min-h-0 grid-rows-[auto_minmax(0,0.72fr)_minmax(0,0.28fr)] gap-3">
+          <div className="flex h-full min-h-0 flex-col gap-3 overflow-hidden">
             <PreviewToolbar
               selection={selection}
               entry={entry}
@@ -135,29 +135,29 @@ export function PreviewStudio({
               onBackToBundle={onBackToBundle}
             />
 
-            <div className="relative min-h-0 overflow-hidden rounded-lg border border-white/60 bg-white/75 p-3">
-              {dragActive ? (
-                <div className="absolute inset-3 z-10 flex items-center justify-center rounded-lg border-2 border-dashed border-primary bg-primary/10 text-sm font-medium text-primary">
-                  {dragLabel ?? t('inspector.dropReplace')}
+            <ScrollArea className="min-h-0 flex-1 overflow-x-hidden pr-1">
+              <div className="space-y-3 pb-1">
+                <div className="relative h-[320px] overflow-hidden rounded-lg border border-white/60 bg-white/75 p-3">
+                  {dragActive ? (
+                    <div className="absolute inset-3 z-10 flex items-center justify-center rounded-lg border-2 border-dashed border-primary bg-primary/10 text-sm font-medium text-primary">
+                      {dragLabel ?? t('inspector.dropReplace')}
+                    </div>
+                  ) : null}
+                  <div className="flex h-full min-h-0 flex-col">
+                    <div className="mb-2 text-[11px] uppercase tracking-[0.08em] text-muted-foreground">{t('sections.previewStage')}</div>
+                    <div className="min-h-0 flex-1">
+                      <CompareViewer
+                        preview={preview}
+                        snapshot={snapshot}
+                        mode={compareMode}
+                        allowedModes={compareModes}
+                        onModeChange={onCompareModeChange}
+                        onImageMetricsChange={setImageMetrics}
+                      />
+                    </div>
+                  </div>
                 </div>
-              ) : null}
-              <div className="flex h-full min-h-0 flex-col">
-                <div className="mb-2 text-[11px] uppercase tracking-[0.08em] text-muted-foreground">{t('sections.previewStage')}</div>
-                <div className="min-h-0 flex-1">
-                  <CompareViewer
-                    preview={preview}
-                    snapshot={snapshot}
-                    mode={compareMode}
-                    allowedModes={compareModes}
-                    onModeChange={onCompareModeChange}
-                    onImageMetricsChange={setImageMetrics}
-                  />
-                </div>
-              </div>
-            </div>
 
-            <ScrollArea className="min-h-0 rounded-lg border border-white/60 bg-white/70 p-3">
-              <div className="space-y-3">
                 {bundleError ? (
                   <div className="rounded-md border border-red-200 bg-red-50 px-3 py-2 text-sm text-red-700">{bundleError}</div>
                 ) : null}
@@ -390,7 +390,7 @@ function InfoList({
       {filtered.map((item) => (
         <div key={`${item.label}:${item.value}`} className="border-b border-white/60 pb-2 last:border-b-0 last:pb-0">
           <div className="text-[11px] text-muted-foreground">{item.label}</div>
-          <div className={cn('mt-1 break-all text-sm leading-6 text-foreground')}>{item.value}</div>
+          <div className={cn('mt-1 whitespace-pre-wrap break-all text-sm leading-6 text-foreground')}>{item.value}</div>
         </div>
       ))}
     </div>

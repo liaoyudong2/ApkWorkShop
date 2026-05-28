@@ -136,14 +136,14 @@ export function ResourceBrowser({
   }, [bundleManifest, filters, query])
 
   return (
-    <Card className="min-h-0 overflow-hidden xl:flex xl:flex-col">
+    <Card className="flex h-full min-h-0 min-w-0 flex-col overflow-hidden">
       <CardHeader className="px-3.5 py-2.5">
         <div className="space-y-1">
           <CardTitle>{title}</CardTitle>
           <CardDescription className="text-xs">{`${t('labels.totalCount')}: ${count}`}</CardDescription>
         </div>
       </CardHeader>
-      <CardContent className="flex min-h-0 flex-1 flex-col gap-2.5 px-3.5 pb-3">
+      <CardContent className="flex min-h-0 flex-1 flex-col gap-2.5 overflow-hidden px-3.5 pb-3">
         <div className="space-y-2">
           <div className="flex flex-wrap items-center gap-2">
             <Input className="h-9 flex-1" placeholder={searchPlaceholder} value={query} onChange={(event) => onQueryChange(event.target.value)} />
@@ -464,7 +464,7 @@ function VirtualList<T>({
   return (
     <ScrollArea
       ref={containerRef}
-      className="min-h-0 flex-1 pr-1"
+      className="h-full min-h-0 flex-1 overflow-x-hidden pr-1"
       onScroll={(event) => setScrollTop((event.currentTarget as HTMLDivElement).scrollTop)}
     >
       <div style={{ height: totalHeight, position: 'relative' }}>

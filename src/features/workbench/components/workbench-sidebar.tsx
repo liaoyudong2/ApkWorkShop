@@ -27,7 +27,7 @@ export function WorkbenchSidebar({
   const bundleGroups = useMemo(() => workbenchGroups.filter((item) => item.section === 'bundle'), [])
 
   return (
-    <Card className="min-h-0 overflow-hidden xl:flex xl:flex-col">
+    <Card className="min-h-0 min-w-0 overflow-hidden xl:flex xl:flex-col">
       <CardHeader className="px-3.5 py-2.5">
         <div className="space-y-1.5">
           <div>

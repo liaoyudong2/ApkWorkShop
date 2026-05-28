@@ -197,3 +197,15 @@ export interface ProjectState {
   work_dir: string
   dist_dir: string
 }
+
+export type TaskProgressKind = 'extract-apk' | 'extract-all-bundles'
+
+export interface TaskProgress {
+  kind: TaskProgressKind
+  current: number
+  total: number
+  percent: number
+  label: string
+  path?: string | null
+  finished: boolean
+}

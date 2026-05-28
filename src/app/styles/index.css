@@ -52,8 +52,9 @@ body {
 }
 
 #root {
-  min-width: 1480px;
-  min-height: 900px;
+  width: 100%;
+  min-width: 0;
+  min-height: 0;
 }
 
 button,

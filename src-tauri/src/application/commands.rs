@@ -11,7 +11,7 @@ use crate::{
   application::{
     models::{
       ActivityLogItem, BuildResult, BundleInfo, BundleManifest, BundleResourceSummary, Manifest, PreviewResult,
-      ProjectStateDto, ToolStatus,
+      ProjectStateDto, ToolStatus, WorkProgressEvent,
     },
     state::{AppState, ProjectRuntime},
   },
@@ -79,7 +79,12 @@ pub async fn choose_replacement_file(app: AppHandle) -> Result<Option<String>, S
 #[tauri::command]
 pub fn extract_project(state: State<'_, AppState>, force: bool) -> Result<ProjectStateDto, String> {
   let mut current = current_runtime(&state)?;
-  let manifest = apk::extract(&current.apk_path, &current.work_dir, force)?;
+  let app = state.app.clone();
+  emit_work_progress(&app, "extract-apk", 0, 0, "", None, false)?;
+  let manifest = apk::extract_with_progress(&current.apk_path, &current.work_dir, force, |current_index, total, path| {
+    emit_work_progress(&app, "extract-apk", current_index, total, path, Some(path.to_string()), false)
+  })?;
+  emit_work_progress(&app, "extract-apk", manifest.entries.len(), manifest.entries.len(), "", None, true)?;
   current.dto.manifest = Some(manifest);
   current.bundle_manifests.clear();
   let work_dir = current.work_dir.display().to_string();
@@ -199,6 +204,7 @@ pub fn extract_all_bundles(state: State<'_, AppState>, force: bool) -> Result<Ve
     .collect::<Vec<_>>();
 
   let total = bundle_paths.len();
+  emit_work_progress(&state.app, "extract-all-bundles", 0, total, "", None, false)?;
   let mut out = Vec::with_capacity(total);
   let mut failures = Vec::new();
   for (index, bundle_path) in bundle_paths.into_iter().enumerate() {
@@ -215,17 +221,17 @@ pub fn extract_all_bundles(state: State<'_, AppState>, force: bool) -> Result<Ve
         failures.push((bundle_path.clone(), err));
       }
     }
-    let _ = state
-      .app
-      .emit(
-        "bundle-extract-progress",
-        serde_json::json!({
-          "bundlePath": bundle_path,
-          "index": index + 1,
-          "total": total,
-        }),
-      );
+    let _ = emit_work_progress(
+      &state.app,
+      "extract-all-bundles",
+      index + 1,
+      total,
+      &bundle_path,
+      Some(bundle_path.clone()),
+      false,
+    );
   }
+  let _ = emit_work_progress(&state.app, "extract-all-bundles", out.len() + failures.len(), total, "", None, true);
   append_log(
     &mut current,
     if failures.is_empty() { "info" } else { "warn" },
@@ -503,4 +509,34 @@ fn bundle_work_dir(work_dir: &Path, bundle_path: &str) -> PathBuf {
 
 fn file_path_to_string(path: FilePath) -> Option<String> {
   path.into_path().ok().map(|value| value.to_string_lossy().to_string())
+}
+
+fn emit_work_progress(
+  app: &AppHandle,
+  kind: &str,
+  current: usize,
+  total: usize,
+  label: &str,
+  path: Option<String>,
+  finished: bool,
+) -> Result<(), String> {
+  let percent = if total == 0 {
+    if finished { 100.0 } else { 0.0 }
+  } else {
+    ((current as f64 / total as f64) * 100.0).clamp(0.0, 100.0)
+  };
+  app
+    .emit(
+      "work-progress",
+      WorkProgressEvent {
+        kind: kind.to_string(),
+        current,
+        total,
+        percent,
+        label: label.to_string(),
+        path,
+        finished,
+      },
+    )
+    .map_err(|err| err.to_string())
 }

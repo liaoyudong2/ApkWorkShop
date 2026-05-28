@@ -8,7 +8,7 @@ import {
 } from 'lucide-react'
 import { useTranslation } from 'react-i18next'
 
-import type { ProjectState, ToolStatus } from '@/shared/types/workspace'
+import type { ProjectState, TaskProgress, ToolStatus } from '@/shared/types/workspace'
 import { compactPath } from '@/shared/lib/utils'
 import { Badge } from '@/shared/ui/badge'
 import { Button } from '@/shared/ui/button'
@@ -48,6 +48,7 @@ export function WorkbenchHeader({
   project,
   tools,
   busyText,
+  taskProgress,
   isLoading,
   onChooseApk,
   onExtract,
@@ -59,6 +60,7 @@ export function WorkbenchHeader({
   project: ProjectState | null
   tools: ToolStatus
   busyText: string
+  taskProgress: TaskProgress | null
   isLoading: boolean
   onChooseApk: () => void
   onExtract: () => void
@@ -68,9 +70,18 @@ export function WorkbenchHeader({
   onOpenDist: () => void
 }) {
   const { t } = useTranslation()
+  const showProgress = Boolean(taskProgress && !taskProgress.finished)
+  const progressText = taskProgress
+    ? t(`progress.${taskProgress.kind}`, {
+        current: taskProgress.current,
+        total: taskProgress.total,
+        percent: Math.round(taskProgress.percent),
+      })
+    : ''
+  const progressLabel = taskProgress?.label ? compactPath(taskProgress.label, 72) : ''
 
   return (
-    <Card className="overflow-hidden">
+    <Card className="min-w-0 overflow-hidden">
       <CardContent className="flex flex-col gap-2.5 px-4 py-3">
         <div className="flex flex-col gap-2.5">
           <div className="flex flex-col gap-2.5 xl:flex-row xl:items-start xl:justify-between">
@@ -87,6 +98,21 @@ export function WorkbenchHeader({
                 {project ? compactPath(project.scan.apk, 120) : t('appSubtitle')}
               </CardDescription>
               <CardDescription className="text-[11px] leading-5">{tools.summary}</CardDescription>
+              {showProgress ? (
+                <div className="mt-1.5 space-y-1.5">
+                  <div className="flex items-center justify-between gap-3 text-[11px] text-muted-foreground">
+                    <span className="truncate">{progressText}</span>
+                    <span className="shrink-0 font-medium text-foreground">{Math.round(taskProgress.percent)}%</span>
+                  </div>
+                  <div className="h-1.5 overflow-hidden rounded-full bg-slate-200/80">
+                    <div
+                      className="h-full rounded-full bg-slate-900 transition-[width] duration-200"
+                      style={{ width: `${taskProgress.percent}%` }}
+                    />
+                  </div>
+                  {progressLabel ? <div className="truncate text-[11px] text-muted-foreground">{progressLabel}</div> : null}
+                </div>
+              ) : null}
             </div>
             <div className="flex flex-wrap items-center gap-1.5">
               <ToolbarButton icon={FolderOpen} label={t('actions.chooseApk')} onClick={onChooseApk} disabled={isLoading} />

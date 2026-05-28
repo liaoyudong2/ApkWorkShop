@@ -11,6 +11,7 @@ export default function App() {
     logs,
     isLoading,
     busyAction,
+    taskProgress,
     chooseApk,
     extract,
     replaceApkEntry,
@@ -23,7 +24,7 @@ export default function App() {
   } = useProject()
 
   return (
-    <div className="flex h-screen flex-col overflow-hidden">
+    <div className="flex h-screen min-w-0 flex-col overflow-hidden">
       {error ? (
         <div className="shrink-0 px-4 pt-4 lg:px-6">
           <Card className="border-red-200 bg-red-50/90 shadow-none">
@@ -34,13 +35,14 @@ export default function App() {
           </Card>
         </div>
       ) : null}
-      <div className="min-h-0 flex-1">
+      <div className="min-h-0 min-w-0 flex-1">
         <AppShell
           project={project}
           tools={tools}
           logs={logs}
           isLoading={isLoading}
           busyAction={busyAction}
+          taskProgress={taskProgress}
           onChooseApk={chooseApk}
           onExtract={() => extract(true)}
           onReplaceApkEntry={replaceApkEntry}

@@ -20,7 +20,7 @@ export function Drawer({
   return (
     <div
       className={cn(
-        'overflow-hidden rounded-lg border border-white/70 bg-white/88 shadow-panel backdrop-blur supports-[backdrop-filter]:bg-white/72 transition-[height]',
+        'min-w-0 overflow-hidden rounded-lg border border-white/70 bg-white/88 shadow-panel backdrop-blur supports-[backdrop-filter]:bg-white/72 transition-[height]',
         className,
       )}
       style={{ height: expanded ? expandedHeight : collapsedHeight }}

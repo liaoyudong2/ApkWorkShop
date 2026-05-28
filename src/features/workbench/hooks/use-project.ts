@@ -1,4 +1,6 @@
 import { useMutation, useQueries, useQuery, useQueryClient } from '@tanstack/react-query'
+import { listen, type UnlistenFn } from '@tauri-apps/api/event'
+import { useEffect, useState } from 'react'
 
 import {
   analyzeBundle,
@@ -32,6 +34,7 @@ import type {
   BundleResourceSummary,
   PreviewResult,
   ProjectState,
+  TaskProgress,
   ToolStatus,
 } from '@/shared/types/workspace'
 
@@ -61,6 +64,27 @@ export function bundleResourcePreviewKey(bundlePath?: string, resourceId?: strin
 
 export function useProject() {
   const queryClient = useQueryClient()
+  const [taskProgress, setTaskProgress] = useState<TaskProgress | null>(null)
+
+  useEffect(() => {
+    let unlisten: UnlistenFn | undefined
+    void listen<TaskProgress>('work-progress', (event) => {
+      const payload = event.payload
+      setTaskProgress(payload)
+      if (payload.finished) {
+        window.setTimeout(() => {
+          setTaskProgress((current) =>
+            current && current.kind === payload.kind && current.finished ? null : current,
+          )
+        }, 800)
+      }
+    }).then((fn) => {
+      unlisten = fn
+    })
+    return () => {
+      unlisten?.()
+    }
+  }, [])
 
   const projectQuery = useQuery({
     queryKey: projectKey,
@@ -221,6 +245,7 @@ export function useProject() {
       extractAllBundlesMutation.error ??
       chooseReplacementMutation.error ??
       null,
+    taskProgress,
     chooseApk: () => chooseApkMutation.mutateAsync(),
     scan: (apkPath?: string) => scanMutation.mutateAsync(apkPath),
     extract: (force = true) => extractMutation.mutateAsync(force),

@@ -325,7 +325,7 @@ function StaticImageStage({
   const localMetrics = useImagePreviewMetrics(src)
   const resolvedMetrics = metrics ?? localMetrics
 
-  const stageMinHeight = compact ? 'min-h-[220px]' : 'min-h-[300px]'
+  const stageMinHeight = compact ? 'min-h-[200px]' : 'min-h-[248px]'
   const fullWidth = resolvedMetrics?.naturalWidth ?? 0
   const fullHeight = resolvedMetrics?.naturalHeight ?? 0
 
@@ -366,7 +366,7 @@ function StaticImageStage({
 
   return (
     <>
-      <div className="flex h-full min-h-0 flex-col gap-2 p-4">
+      <div className="flex h-full min-h-0 flex-col gap-2 p-3">
         {resolvedMetrics ? (
           <div className="text-xs text-muted-foreground">
             {t('inspector.scaleFit')} {Math.round(fitScale * 100)}%
@@ -376,7 +376,7 @@ function StaticImageStage({
           type="button"
           className={cn(
             stageMinHeight,
-            'min-h-0 flex-1 overflow-hidden rounded-lg border border-white/60 bg-white/45 p-4 text-left',
+            'min-h-0 flex-1 overflow-hidden rounded-lg border border-white/60 bg-white/45 p-3 text-left',
             'cursor-zoom-in',
           )}
           onClick={() => setFullscreenOpen(true)}

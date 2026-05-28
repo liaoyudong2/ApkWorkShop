@@ -76,6 +76,13 @@ pub fn scan(apk_path: &Path) -> Result<ScanReport, String> {
 }
 
 pub fn extract(apk_path: &Path, work_dir: &Path, force: bool) -> Result<Manifest, String> {
+  extract_with_progress(apk_path, work_dir, force, |_, _, _| Ok(()))
+}
+
+pub fn extract_with_progress<F>(apk_path: &Path, work_dir: &Path, force: bool, mut progress: F) -> Result<Manifest, String>
+where
+  F: FnMut(usize, usize, &str) -> Result<(), String>,
+{
   let scan = scan(apk_path)?;
   if let Ok(stat) = fs::metadata(work_dir) {
     if !stat.is_dir() {
@@ -91,16 +98,21 @@ pub fn extract(apk_path: &Path, work_dir: &Path, force: bool) -> Result<Manifest
 
   let file = File::open(apk_path).map_err(|err| err.to_string())?;
   let mut archive = ZipArchive::new(file).map_err(|err| format!("不是有效 APK/ZIP: {err}"))?;
-  let mut entries = Vec::with_capacity(archive.len());
+  let total = archive.len();
+  let mut entries = Vec::with_capacity(total);
 
-  for index in 0..archive.len() {
+  progress(0, total, "")?;
+
+  for index in 0..total {
     let mut item = archive.by_index(index).map_err(|err| err.to_string())?;
+    let entry_name = item.name().to_string();
     let safe_path = shared::validate_apk_path(item.name())?;
     let entry = entry_from_zip(&item);
     entries.push(entry);
     let target = work_dir.join(safe_path.replace('/', std::path::MAIN_SEPARATOR_STR));
     if item.is_dir() {
       fs::create_dir_all(&target).map_err(|err| err.to_string())?;
+      progress(index + 1, total, &entry_name)?;
       continue;
     }
     if let Some(parent) = target.parent() {
@@ -108,6 +120,7 @@ pub fn extract(apk_path: &Path, work_dir: &Path, force: bool) -> Result<Manifest
     }
     let mut output = File::create(&target).map_err(|err| err.to_string())?;
     io::copy(&mut item, &mut output).map_err(|err| err.to_string())?;
+    progress(index + 1, total, &entry_name)?;
   }
 
   let manifest = Manifest {
