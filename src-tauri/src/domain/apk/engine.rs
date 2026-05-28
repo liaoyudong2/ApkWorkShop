@@ -1,8 +1,7 @@
 use std::{
   collections::BTreeMap,
   fs::{self, File},
-  io::{self, Read},
-  os::unix::fs::FileExt,
+  io::{self, Read, Seek, SeekFrom},
   path::{Path, PathBuf},
   process::Command,
 };
@@ -505,7 +504,7 @@ fn has_apk_signing_block(apk_path: &Path) -> bool {
     read_size = size;
   }
   let mut tail = vec![0_u8; read_size as usize];
-  if file.read_exact_at(&mut tail, size.saturating_sub(read_size)).is_err() {
+  if read_exact_from(&mut file, size.saturating_sub(read_size), &mut tail).is_err() {
     return false;
   }
   let eocd = tail.windows(4).rposition(|bytes| bytes == [0x50, 0x4b, 0x05, 0x06]);
@@ -520,10 +519,15 @@ fn has_apk_signing_block(apk_path: &Path) -> bool {
     return false;
   }
   let mut footer = [0_u8; 24];
-  if file.read_exact_at(&mut footer, central_dir_offset - 24).is_err() {
+  if read_exact_from(&mut file, central_dir_offset - 24, &mut footer).is_err() {
     return false;
   }
   footer[8..] == *APK_SIGN_BLOCK_MAGIC
+}
+
+fn read_exact_from(file: &mut File, offset: u64, buffer: &mut [u8]) -> io::Result<()> {
+  file.seek(SeekFrom::Start(offset))?;
+  file.read_exact(buffer)
 }
 
 fn parse_addressables(settings: Option<&Value>, catalog: Option<&Value>) -> AddressablesInfo {
