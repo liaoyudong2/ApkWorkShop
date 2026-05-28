@@ -88,3 +88,26 @@ macOS 产物默认位于：
 
 - `src-tauri/target/release/bundle/macos/`
 - `src-tauri/target/release/bundle/dmg/`
+
+Windows 可直接运行根目录脚本：
+
+```bat
+build-windows.bat
+```
+
+脚本行为：
+
+- 自动检测 `winget / Node.js / npm / Rust / cargo / rustc / Visual Studio C++ Build Tools / WebView2`
+- 缺失时优先通过 `winget` 自动安装
+- 自动切换 Rust 到 `stable-x86_64-pc-windows-msvc`
+- 自动加载 MSVC 构建环境后执行 `npm run tauri:build`
+
+Windows 打包前需确保本机已安装：
+
+- `winget`（即 Windows App Installer）
+- PowerShell 或 `pwsh`
+
+Windows 产物默认位于：
+
+- `src-tauri\target\release\bundle\nsis\`
+- `src-tauri\target\release\bundle\msi\`
