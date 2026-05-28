@@ -280,7 +280,9 @@ pub fn sign_debug(unsigned_apk: &Path, output_apk: &Path, keystore: &Path) -> Re
     fs::create_dir_all(parent).map_err(|err| err.to_string())?;
   }
   if !keystore.exists() {
-    let output = Command::new("keytool")
+    let mut command = Command::new("keytool");
+    shared::configure_command(&mut command);
+    let output = command
       .args([
         "-genkeypair",
         "-v",
@@ -308,14 +310,18 @@ pub fn sign_debug(unsigned_apk: &Path, output_apk: &Path, keystore: &Path) -> Re
     }
   }
   let aligned = output_apk.with_extension("aligned-tmp.apk");
-  let output = Command::new("zipalign")
+  let mut zipalign = Command::new("zipalign");
+  shared::configure_command(&mut zipalign);
+  let output = zipalign
     .args(["-f", "-p", "4", &unsigned_apk.to_string_lossy(), &aligned.to_string_lossy()])
     .output()
     .map_err(|err| err.to_string())?;
   if !output.status.success() {
     return Err(format!("zipalign 失败: {}", String::from_utf8_lossy(&output.stderr).trim()));
   }
-  let sign_output = Command::new("apksigner")
+  let mut apksigner = Command::new("apksigner");
+  shared::configure_command(&mut apksigner);
+  let sign_output = apksigner
     .args([
       "sign",
       "--ks",
@@ -336,7 +342,9 @@ pub fn sign_debug(unsigned_apk: &Path, output_apk: &Path, keystore: &Path) -> Re
   if !sign_output.status.success() {
     return Err(format!("apksigner 失败: {}", String::from_utf8_lossy(&sign_output.stderr).trim()));
   }
-  let verify_output = Command::new("apksigner")
+  let mut verify = Command::new("apksigner");
+  shared::configure_command(&mut verify);
+  let verify_output = verify
     .args(["verify", &output_apk.to_string_lossy()])
     .output()
     .map_err(|err| err.to_string())?;

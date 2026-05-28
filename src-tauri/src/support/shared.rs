@@ -1,4 +1,5 @@
 use std::{
+  env,
   fs::{self, File},
   io::{self, Read, Write},
   path::{Path, PathBuf},
@@ -92,11 +93,18 @@ pub fn read_json_file<T: for<'de> serde::Deserialize<'de>>(path: &Path) -> Resul
 }
 
 pub fn command_exists(name: &str) -> bool {
-  Command::new(name)
-    .arg("--version")
-    .output()
-    .map(|output| output.status.success())
-    .unwrap_or(false)
+  command_path(name).is_some()
+}
+
+pub fn configure_command(command: &mut Command) -> &mut Command {
+  #[cfg(windows)]
+  {
+    use std::os::windows::process::CommandExt;
+
+    const CREATE_NO_WINDOW: u32 = 0x0800_0000;
+    command.creation_flags(CREATE_NO_WINDOW);
+  }
+  command
 }
 
 pub fn file_to_data_url(path: &Path, mime: &str) -> Result<String, String> {
@@ -145,4 +153,82 @@ pub fn resolve_storage_root(app_data_dir: Result<PathBuf, tauri::Error>) -> Resu
   };
   fs::create_dir_all(&root).map_err(|err| err.to_string())?;
   Ok(root)
+}
+
+fn command_path(name: &str) -> Option<PathBuf> {
+  let candidate = Path::new(name);
+  if candidate.components().count() > 1 || candidate.is_absolute() {
+    return resolve_command_candidate(candidate);
+  }
+
+  let path_var = env::var_os("PATH")?;
+  let path_exts = command_extensions();
+  for dir in env::split_paths(&path_var) {
+    for ext in &path_exts {
+      let file_name = if ext.is_empty() {
+        name.to_string()
+      } else {
+        format!("{name}{ext}")
+      };
+      let full = dir.join(&file_name);
+      if is_executable_file(&full) {
+        return Some(full);
+      }
+    }
+  }
+  None
+}
+
+fn resolve_command_candidate(path: &Path) -> Option<PathBuf> {
+  if path.extension().is_some() {
+    if is_executable_file(path) {
+      return Some(path.to_path_buf());
+    }
+    return None;
+  }
+
+  for ext in command_extensions() {
+    let candidate = if ext.is_empty() {
+      path.to_path_buf()
+    } else {
+      PathBuf::from(format!("{}{}", path.to_string_lossy(), ext))
+    };
+    if is_executable_file(&candidate) {
+      return Some(candidate);
+    }
+  }
+  None
+}
+
+fn command_extensions() -> Vec<String> {
+  #[cfg(windows)]
+  {
+    let mut exts = env::var("PATHEXT")
+      .ok()
+      .map(|value| {
+        value
+          .split(';')
+          .filter_map(|part| {
+            let trimmed = part.trim();
+            if trimmed.is_empty() {
+              None
+            } else {
+              Some(trimmed.to_ascii_lowercase())
+            }
+          })
+          .collect::<Vec<_>>()
+      })
+      .unwrap_or_else(|| vec![".com".into(), ".exe".into(), ".bat".into(), ".cmd".into()]);
+    exts.insert(0, String::new());
+    exts
+  }
+
+  #[cfg(not(windows))]
+  {
+    vec![String::new()]
+  }
+}
+
+fn is_executable_file(path: &Path) -> bool {
+  fs::metadata(path).map(|meta| meta.is_file()).unwrap_or(false)
 }
