@@ -101,6 +101,7 @@ build-windows.bat
 - 缺失时优先通过 `winget` 自动安装
 - 自动切换 Rust 到 `stable-x86_64-pc-windows-msvc`
 - 自动加载 MSVC 构建环境后执行 `npm run tauri:build`
+- WebView2 若安装返回异常码，会再次复检；若系统已存在则不再阻塞打包
 
 Windows 打包前需确保本机已安装：
 

@@ -14,6 +14,11 @@ function Fail {
   throw "[apkworkshop] $Message"
 }
 
+function Write-Warn {
+  param([string]$Message)
+  Write-Warning "[apkworkshop] $Message"
+}
+
 function Test-CommandExists {
   param([string]$Name)
   return $null -ne (Get-Command $Name -ErrorAction SilentlyContinue)
@@ -45,7 +50,8 @@ function Install-WingetPackage {
   param(
     [string]$Id,
     [string]$Label,
-    [string[]]$ExtraArgs = @()
+    [string[]]$ExtraArgs = @(),
+    [switch]$AllowFailure
   )
 
   Write-Log "Installing $Label ..."
@@ -59,8 +65,13 @@ function Install-WingetPackage {
 
   & winget @args
   if ($LASTEXITCODE -ne 0) {
+    if ($AllowFailure) {
+      Write-Warn "$Label installation returned exit code $LASTEXITCODE."
+      return $false
+    }
     Fail "$Label installation failed. winget exit code: $LASTEXITCODE"
   }
+  return $true
 }
 
 function Ensure-Node {
@@ -78,24 +89,41 @@ function Ensure-Node {
   }
 }
 
-function Ensure-Rust {
+function Ensure-Rustup {
   $hasCargo = Test-CommandExists 'cargo'
   $hasRustc = Test-CommandExists 'rustc'
   if ($hasCargo -and $hasRustc) {
     Write-Log 'Rust toolchain detected'
-  } else {
-    Ensure-Winget
-    Install-WingetPackage -Id 'Rustlang.Rustup' -Label 'Rustup / Rust' -ExtraArgs @('--silent')
-    Refresh-SessionPath
+    return
   }
+
+  Ensure-Winget
+  Install-WingetPackage -Id 'Rustlang.Rustup' -Label 'Rustup / Rust' -ExtraArgs @('--silent')
+  Refresh-SessionPath
 
   if (-not (Test-CommandExists 'rustup')) {
     Fail 'Rust was installed but rustup is still unavailable in the current session. Please reopen the terminal and try again.'
   }
+}
 
-  & rustup default stable-x86_64-pc-windows-msvc
+function Ensure-RustToolchain {
+  if (-not (Test-CommandExists 'rustup')) {
+    Fail 'rustup is unavailable.'
+  }
+
+  & rustup toolchain install stable-x86_64-pc-windows-msvc --profile minimal
+  if ($LASTEXITCODE -ne 0) {
+    Fail 'Failed to install the stable-x86_64-pc-windows-msvc toolchain.'
+  }
+
+  & rustup default stable-x86_64-pc-windows-msvc | Out-Null
   if ($LASTEXITCODE -ne 0) {
     Fail 'Failed to switch Rust to stable-x86_64-pc-windows-msvc.'
+  }
+
+  & rustc -V | Out-Null
+  if ($LASTEXITCODE -ne 0) {
+    Fail 'rustc is unavailable after configuring the MSVC toolchain.'
   }
 }
 
@@ -169,15 +197,57 @@ function Import-VsDevEnvironment {
   }
 }
 
+function Test-WebView2RuntimeInstalled {
+  $registryPaths = @(
+    'HKLM:\SOFTWARE\Microsoft\EdgeUpdate\Clients\{F3017226-FE2A-4295-8BDF-00C3A9A7E4C5}',
+    'HKLM:\SOFTWARE\WOW6432Node\Microsoft\EdgeUpdate\Clients\{F3017226-FE2A-4295-8BDF-00C3A9A7E4C5}',
+    'HKCU:\SOFTWARE\Microsoft\EdgeUpdate\Clients\{F3017226-FE2A-4295-8BDF-00C3A9A7E4C5}'
+  )
+
+  foreach ($path in $registryPaths) {
+    if (Test-Path $path) {
+      return $true
+    }
+  }
+
+  $runtimePaths = @(
+    (Join-Path ${env:ProgramFiles(x86)} 'Microsoft\EdgeWebView\Application'),
+    (Join-Path $env:ProgramFiles 'Microsoft\EdgeWebView\Application'),
+    (Join-Path $env:LOCALAPPDATA 'Microsoft\EdgeWebView\Application')
+  )
+
+  foreach ($path in $runtimePaths) {
+    if ($path -and (Test-Path $path)) {
+      return $true
+    }
+  }
+
+  return $false
+}
+
 function Ensure-WebView2 {
-  $webViewReg = 'HKLM:\SOFTWARE\Microsoft\EdgeUpdate\Clients\{F3017226-FE2A-4295-8BDF-00C3A9A7E4C5}'
-  if (Test-Path $webViewReg) {
+  if (Test-WebView2RuntimeInstalled) {
     Write-Log 'WebView2 Runtime detected'
     return
   }
 
   Ensure-Winget
-  Install-WingetPackage -Id 'Microsoft.EdgeWebView2Runtime' -Label 'WebView2 Runtime' -ExtraArgs @('--silent')
+  $installed = Install-WingetPackage `
+    -Id 'Microsoft.EdgeWebView2Runtime' `
+    -Label 'WebView2 Runtime' `
+    -ExtraArgs @('--silent') `
+    -AllowFailure
+
+  if ($installed) {
+    return
+  }
+
+  if (Test-WebView2RuntimeInstalled) {
+    Write-Log 'WebView2 Runtime detected after winget returned a non-zero exit code'
+    return
+  }
+
+  Write-Warn 'WebView2 Runtime could not be installed automatically. Build will continue, but the app may require WebView2 on the target machine.'
 }
 
 function Ensure-NodeModules {
@@ -234,9 +304,10 @@ Write-Log "Project directory: $RootDir"
 Refresh-SessionPath
 Ensure-Winget
 Ensure-Node
-Ensure-Rust
+Ensure-Rustup
 $vsInstallPath = Ensure-VsBuildTools
 Import-VsDevEnvironment -InstallPath $vsInstallPath
+Ensure-RustToolchain
 Ensure-WebView2
 Ensure-NodeModules
 Invoke-TauriBuild
